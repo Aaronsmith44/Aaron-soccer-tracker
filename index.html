@@ -298,8 +298,8 @@
   const CAL_SEARCH_TERMS = ['Maury Non-Athletic', 'Fever FC'];
   // ─────────────────────────────────────────────
 
-  const SHEETS_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
-  const CSV_URL     = `https://api.allorigins.win/raw?url=${encodeURIComponent(SHEETS_URL)}`;
+  const SHEETS_API_KEY = 'AIzaSyAptk1sn14btHdc6NgKbOxtuLEVTaAMca4';
+  const SHEETS_URL     = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/A:F?key=${SHEETS_API_KEY}`;
   const CAL_SCOPE   = 'https://www.googleapis.com/auth/calendar.readonly';
   const GOAL_TARGET = 50;
   const YEAR        = 2026;
@@ -680,9 +680,10 @@
   /* ── Load sheet data ── */
   async function load() {
     try {
-      const res  = await fetch(CSV_URL);
-      const text = await res.text();
-      render(parseGames(parseCSV(text)));
+      const res  = await fetch(SHEETS_URL);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      render(parseGames(data.values || []));
     } catch (err) {
       document.getElementById('app').innerHTML = `
         <div class="error-box">
