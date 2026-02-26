@@ -298,7 +298,7 @@
   const CAL_SEARCH_TERMS = ['Maury Non-Athletic', 'Fever FC'];
   // ─────────────────────────────────────────────
 
-  const CSV_URL     = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+  const CSV_URL     = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
   const CAL_SCOPE   = 'https://www.googleapis.com/auth/calendar.readonly';
   const GOAL_TARGET = 50;
   const YEAR        = 2026;
@@ -687,9 +687,7 @@
         <div class="error-box">
           <p style="font-size:1.5rem;margin-bottom:.5rem">⚠️</p>
           <p style="font-weight:700;margin-bottom:.5rem">Couldn't fetch spreadsheet data</p>
-          <p style="font-size:.85rem">If you opened this file directly, run a local server:</p>
-          <code>python3 -m http.server 8081</code>
-          <p style="font-size:.8rem;margin-top:.75rem">then open <strong>http://localhost:8081/soccer-tracker.html</strong></p>
+          <p style="font-size:.85rem">Try refreshing the page. If the problem persists, make sure your Google Sheet is set to <strong>Anyone with the link can view</strong>.</p>
         </div>`;
     }
   }
