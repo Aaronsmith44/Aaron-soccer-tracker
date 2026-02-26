@@ -395,12 +395,39 @@
         new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date)
       );
 
+      // Save to localStorage with a timestamp
+      localStorage.setItem('cal_events', JSON.stringify(events));
+      localStorage.setItem('cal_synced', new Date().toISOString());
+
       renderCalendarEvents(events);
-      const header = document.getElementById('cal-header-right');
-      if (header) header.innerHTML = `<span class="cal-connected-badge">✓ Calendar connected</span>`;
+      updateCalHeader(new Date());
     } catch (e) {
       renderCalendarEvents(null, 'Failed to load calendar events.');
     }
+  }
+
+  function updateCalHeader(syncedAt) {
+    const header = document.getElementById('cal-header-right');
+    if (!header) return;
+    const timeStr = syncedAt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+      + ' at ' + syncedAt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    header.innerHTML = `
+      <span style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        <span class="cal-connected-badge">✓ Synced ${timeStr}</span>
+        <button class="cal-connect-btn" id="cal-btn" onclick="connectCalendar()">🔄 Re-sync</button>
+      </span>`;
+  }
+
+  function loadStoredCalendar() {
+    const raw    = localStorage.getItem('cal_events');
+    const synced = localStorage.getItem('cal_synced');
+    if (!raw) return false;
+    try {
+      const events = JSON.parse(raw);
+      renderCalendarEvents(events);
+      updateCalHeader(new Date(synced));
+      return true;
+    } catch { return false; }
   }
 
   function renderCalendarEvents(events, errorMsg) {
@@ -589,6 +616,7 @@
         <div id="cal-body">
           <div class="cal-empty">Click "Connect Google Calendar" to load upcoming games.</div>
         </div>
+        <script>loadStoredCalendar();</script>
       </div>
     `;
 
