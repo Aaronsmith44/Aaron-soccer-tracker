@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aaron's 2026 Soccer Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+    :root {
+      --green:        #16a34a;
+      --green-bg:     #dcfce7;
+      --green-glow:   rgba(22,163,74,0.18);
+      --yellow:       #b45309;
+      --yellow-bg:    #fef3c7;
+      --red:          #dc2626;
+      --blue:         #1d4ed8;
+      --purple:       #7c3aed;
+      --bg:           #f0f4f8;
+      --card:         #ffffff;
+      --card-border:  rgba(0,0,0,0.07);
+      --card-shadow:  0 1px 3px rgba(0,0,0,0.06), 0 6px 20px rgba(0,0,0,0.06);
+      --text:         #0f172a;
+      --muted:        #64748b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Hero banner ── */
+    .hero-banner {
+      width: 100%;
+      min-height: 280px;
+      background-image:
+        linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.3) 60%, rgba(0,0,0,0.55) 100%),
+        url('https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=1400&auto=format&fit=crop&q=80');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .hero-banner-inner { color: #fff; }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: #fff;
+      border-radius: 9999px;
+      padding: 0.3rem 0.9rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.85rem;
+      backdrop-filter: blur(6px);
+    }
+    .hero-banner h1 {
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 0.4rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .goal-statement { font-size: 1rem; margin-bottom: 0.35rem; opacity: 0.92; }
+    .goal-statement strong { color: #86efac; }
+    .hero-banner p.sub { font-size: 0.85rem; opacity: 0.65; }
+
+    /* ── Layout ── */
+    .container { max-width: 880px; margin: 0 auto; padding: 0 1rem 5rem; }
+
+    /* ── Progress ring section ── */
+    .ring-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .ring-wrap {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      filter: drop-shadow(0 4px 24px var(--green-glow));
+    }
+    .ring-wrap svg { transform: rotate(-90deg); }
+    .ring-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .ring-num   { font-size: 3.75rem; font-weight: 900; color: var(--green); line-height: 1; }
+    .ring-denom { font-size: 1rem; color: var(--muted); font-weight: 600; }
+    .ring-tag   { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.2rem; }
+
+    /* ── Pace badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.55rem 1.4rem; border-radius: 9999px;
+      font-weight: 700; font-size: 0.9rem;
+    }
+    .badge.ahead  { background: var(--green-bg);  color: var(--green); border: 1px solid rgba(22,163,74,0.3);  }
+    .badge.behind { background: #fee2e2;           color: var(--red);   border: 1px solid rgba(220,38,38,0.3); }
+    .badge.close  { background: var(--yellow-bg);  color: var(--yellow);border: 1px solid rgba(180,83,9,0.3);  }
+
+    /* ── Stat cards ── */
+    .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    @media (max-width: 580px) { .stats { grid-template-columns: repeat(2,1fr); } }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.2rem 1.1rem;
+      box-shadow: var(--card-shadow);
+    }
+    .stat-lbl { font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.55rem; }
+    .stat-val  { font-size: 2rem; font-weight: 900; line-height: 1; }
+    .stat-sub  { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
+
+    /* ── Generic card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--card-shadow);
+    }
+    .card-title {
+      font-size: 0.68rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.25rem;
+    }
+
+    /* ── Pace bars ── */
+    .bar-row  { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.65rem; }
+    .bar-lbl  { width: 72px; font-size: 0.78rem; color: var(--muted); flex-shrink: 0; }
+    .bar-track { flex: 1; height: 9px; background: rgba(0,0,0,0.07); border-radius: 9999px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 9999px; }
+    .bar-num  { width: 36px; text-align: right; font-size: 0.85rem; font-weight: 700; }
+    .projection {
+      margin-top: 1.1rem; padding-top: 1.1rem;
+      border-top: 1px solid var(--card-border);
+      font-size: 0.875rem; color: var(--muted); line-height: 1.6;
+    }
+    .projection strong { color: var(--text); }
+    .projection .good { color: var(--green);  font-weight: 700; }
+    .projection .warn { color: var(--yellow); font-weight: 700; }
+    .projection .bad  { color: var(--red);    font-weight: 700; }
+
+    /* ── Chart ── */
+    canvas { max-height: 240px; }
+
+    /* ── Team breakdown ── */
+    .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+    .team-card {
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: 0.85rem;
+      padding: 1.1rem 1rem;
+    }
+    .team-name {
+      font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem;
+      padding-bottom: 0.6rem; border-bottom: 1px solid var(--card-border);
+    }
+    .team-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.78rem; padding: 0.2rem 0;
+    }
+    .team-row-lbl { color: var(--muted); }
+    .team-row-val { font-weight: 700; }
+
+    /* ── Calendar ── */
+    .cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .cal-connect-btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      color: var(--blue); border-radius: 9999px;
+      padding: 0.45rem 1.1rem; font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .cal-connect-btn:hover { background: #dbeafe; }
+    .cal-connect-btn:disabled { opacity: 0.5; cursor: default; }
+    .cal-connected-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: var(--green-bg); border: 1px solid rgba(22,163,74,0.3);
+      color: var(--green); border-radius: 9999px;
+      padding: 0.35rem 0.9rem; font-size: 0.75rem; font-weight: 700;
+    }
+    .game-list { display: flex; flex-direction: column; gap: 0.65rem; }
+    .game-item {
+      display: flex; align-items: center; gap: 1rem;
+      background: #f8fafc; border: 1px solid var(--card-border);
+      border-radius: 0.75rem; padding: 0.85rem 1rem;
+    }
+    .game-item.next-game {
+      border-color: rgba(22,163,74,0.4);
+      background: #f0fdf4;
+    }
+    .game-date-block { text-align: center; min-width: 44px; flex-shrink: 0; }
+    .game-month { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .game-day   { font-size: 1.5rem; font-weight: 900; line-height: 1.1; color: var(--text); }
+    .game-info  { flex: 1; }
+    .game-title { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.15rem; }
+    .game-time  { font-size: 0.75rem; color: var(--muted); }
+    .next-pill {
+      font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--green);
+      background: var(--green-bg); border-radius: 9999px;
+      padding: 0.2rem 0.55rem; flex-shrink: 0;
+    }
+    .cal-empty { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: 0.875rem; }
+    .cal-setup-note { font-size: 0.78rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.6; }
+    .cal-setup-note code {
+      background: #f1f5f9; padding: 0.15rem 0.4rem;
+      border-radius: 0.25rem; font-family: monospace; font-size: 0.78rem;
+    }
+
+    /* ── Scattered soccer balls ── */
+    .soccer-bg {
+      position: absolute; top: 0; left: 0;
+      width: 100%; min-height: 100%;
+      pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    body { position: relative; }
+    .soccer-bg span {
+      position: absolute;
+      user-select: none;
+      animation: floatball var(--dur) var(--delay) ease-in-out infinite alternate;
+    }
+    @keyframes floatball {
+      from { transform: translateY(0)    rotate(0deg);  }
+      to   { transform: translateY(-14px) rotate(25deg); }
+    }
+    /* lift all real content above the bg layer */
+    .hero-banner, .container { position: relative; z-index: 1; }
+
+    /* ── Loading / Error ── */
+    .center { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+    .error-box {
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 1rem; padding: 2rem; text-align: center; color: var(--red);
+    }
+    .error-box code {
+      display: inline-block; margin-top: 0.75rem;
+      background: #fee2e2; padding: 0.3rem 0.6rem;
+      border-radius: 0.3rem; font-family: monospace; font-size: 0.85rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  </style>
+</head>
+<body>
+
+<!-- ── Scattered soccer balls background ── -->
+<div class="soccer-bg" id="soccer-bg" aria-hidden="true"></div>
+
+<!-- ── Hero banner with stadium photo ── -->
+<div class="hero-banner">
+  <div class="hero-banner-inner">
+    <div class="header-badge">⚽ 2026 Season</div>
+    <h1>Aaron's 2026 Soccer Tracker</h1>
+    <p class="goal-statement">Goal: <strong>50 combined goals + assists</strong> in 2026</p>
+    <p class="sub" id="subtitle">Loading...</p>
+  </div>
+</div>
+
+<div class="container">
+  <div id="app">
+    <div class="center">
+      <div class="spin" style="font-size:2rem">⚽</div>
+      <p style="margin-top:1rem">Fetching your stats…</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─────────────────────────────────────────────
+  // CONFIG
+  // ─────────────────────────────────────────────
+  const SHEET_ID         = '1eeOD8u2Ihs6Q1fCh0L9vDeVBYPhdmnO1Qoa824sDxC4';
+  const GOOGLE_CLIENT_ID = '460231346995-06lmqqb7mug4h1k9vduqi21nvbautb5c.apps.googleusercontent.com';
+  const CAL_SEARCH_TERMS = ['Maury Non-Athletic', 'Fever FC'];
+  // ─────────────────────────────────────────────
+
+  const CSV_URL     = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+  const CAL_SCOPE   = 'https://www.googleapis.com/auth/calendar.readonly';
+  const GOAL_TARGET = 50;
+  const YEAR        = 2026;
+
+  let tokenClient = null;
+  let accessToken = null;
+
+  /* ── CSV parser ── */
+  function parseCSV(text) {
+    return text.trim().split('\n').map(line => {
+      const cols = []; let cur = '', inQ = false;
+      for (const ch of line) {
+        if (ch === '"')              { inQ = !inQ; }
+        else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+        else                         { cur += ch; }
+      }
+      cols.push(cur.trim());
+      return cols;
+    });
+  }
+
+  function parseGames(rows) {
+    const re = /^\d{1,2}\/\d{1,2}$/;
+    return rows
+      .filter(r => r[1] && re.test(r[1]))
+      .map(r => {
+        const [mo, dy] = r[1].split('/').map(Number);
+        return {
+          date:    new Date(YEAR, mo - 1, dy),
+          label:   r[1],
+          team:    (r[2] || 'Unknown').replace(/\b\w/g, c => c.toUpperCase()),
+          goals:   parseInt(r[3]) || 0,
+          assists: parseInt(r[4]) || 0,
+        };
+      })
+      .sort((a, b) => a.date - b.date);
+  }
+
+  function dayOfYear(d) {
+    return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
+  }
+
+  /* ── Google Calendar ── */
+  function initTokenClient() {
+    if (!window.google || GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE') return;
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: CAL_SCOPE,
+      callback: async (resp) => {
+        if (resp.access_token) {
+          accessToken = resp.access_token;
+          await loadCalendar();
+        }
+      },
+    });
+  }
+
+  async function loadCalendar() {
+    const btn = document.getElementById('cal-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+
+    try {
+      const now   = new Date().toISOString();
+      const later = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
+
+      const calListRes  = await fetch(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const calListData = await calListRes.json();
+      const calIds      = (calListData.items || []).map(c => c.id);
+
+      const fetches = calIds.flatMap(calId =>
+        CAL_SEARCH_TERMS.map(term => {
+          const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`);
+          url.searchParams.set('timeMin',      now);
+          url.searchParams.set('timeMax',      later);
+          url.searchParams.set('orderBy',      'startTime');
+          url.searchParams.set('singleEvents', 'true');
+          url.searchParams.set('maxResults',   '50');
+          url.searchParams.set('q',            term);
+          return fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+            .then(r => r.json()).then(d => d.items || []).catch(() => []);
+        })
+      );
+
+      const results = await Promise.all(fetches);
+      const seen    = new Set();
+      const events  = results.flat().filter(ev => {
+        if (seen.has(ev.id)) return false;
+        seen.add(ev.id);
+        return true;
+      }).sort((a, b) =>
+        new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date)
+      );
+
+      renderCalendarEvents(events);
+      const header = document.getElementById('cal-header-right');
+      if (header) header.innerHTML = `<span class="cal-connected-badge">✓ Calendar connected</span>`;
+    } catch (e) {
+      renderCalendarEvents(null, 'Failed to load calendar events.');
+    }
+  }
+
+  function renderCalendarEvents(events, errorMsg) {
+    const el = document.getElementById('cal-body');
+    if (!el) return;
+
+    if (errorMsg) { el.innerHTML = `<div class="cal-empty">${errorMsg}</div>`; return; }
+
+    if (!events.length) {
+      el.innerHTML = `<div class="cal-empty">No upcoming events matching "${CAL_SEARCH_TERMS.join('" or "')}" found in the next 4 months.</div>`;
+      return;
+    }
+
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    el.innerHTML = `<div class="game-list">` + events.map((ev, i) => {
+      const start   = new Date(ev.start.dateTime || ev.start.date);
+      const timeStr = ev.start.dateTime
+        ? start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+        : 'All day';
+      const isNext  = i === 0;
+      return `
+        <div class="game-item ${isNext ? 'next-game' : ''}">
+          <div class="game-date-block">
+            <div class="game-month">${MONTHS[start.getMonth()]}</div>
+            <div class="game-day">${start.getDate()}</div>
+          </div>
+          <div class="game-info">
+            <div class="game-title">${ev.summary || 'Soccer Game'}</div>
+            <div class="game-time">${DAYS[start.getDay()]} · ${timeStr}${ev.location ? ' · ' + ev.location : ''}</div>
+          </div>
+          ${isNext ? '<span class="next-pill">Next up</span>' : ''}
+        </div>`;
+    }).join('') + `</div>`;
+  }
+
+  /* ── Main render ── */
+  function render(games) {
+    const goals         = games.reduce((s, g) => s + g.goals,   0);
+    const assists       = games.reduce((s, g) => s + g.assists, 0);
+    const contributions = goals + assists;
+    const played        = games.length;
+
+    const today    = new Date();
+    const doy      = dayOfYear(today);
+    const daysLeft = 365 - doy;
+    const expected  = (doy / 365) * GOAL_TARGET;
+    const projected = played ? Math.round((contributions / doy) * 365) : 0;
+
+    const remaining     = GOAL_TARGET - contributions;
+    const projGamesLeft = played ? Math.round(played * (daysLeft / doy)) : '?';
+    const neededPerGame = (typeof projGamesLeft === 'number' && projGamesLeft > 0)
+      ? (remaining / projGamesLeft).toFixed(2) : '—';
+
+    const diff = contributions - expected;
+    let paceClass, paceText;
+    if (diff >= 1.5)       { paceClass = 'ahead';  paceText = `🔥 ${Math.abs(diff).toFixed(1)} G+A ahead of pace`; }
+    else if (diff <= -1.5) { paceClass = 'behind'; paceText = `📉 ${Math.abs(diff).toFixed(1)} G+A behind pace`;   }
+    else                   { paceClass = 'close';  paceText = `✅ Right on pace`;                                    }
+
+    const R = 100, CX = 120, CY = 120;
+    const C = 2 * Math.PI * R;
+    const pct    = Math.min(contributions / GOAL_TARGET, 1);
+    const expPct = Math.min(expected / GOAL_TARGET, 1);
+
+    const projClass = projected >= GOAL_TARGET ? 'good' : projected >= GOAL_TARGET * 0.8 ? 'warn' : 'bad';
+    const projMsg   = projected >= GOAL_TARGET
+      ? `You're on track to smash your target! 🎯`
+      : `You'll need to average <strong>${neededPerGame} G+A per game</strong> over your estimated ${projGamesLeft} remaining games to reach 50.`;
+
+    document.getElementById('subtitle').textContent =
+      `Updated ${today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}`;
+
+    document.getElementById('app').innerHTML = `
+
+      <!-- Progress ring -->
+      <div class="ring-section">
+        <div class="ring-wrap">
+          <svg width="240" height="240" viewBox="0 0 240 240">
+            <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(0,0,0,0.07)" stroke-width="16"/>
+            <circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+              stroke="rgba(22,163,74,0.2)" stroke-width="16"
+              stroke-dasharray="${C}" stroke-dashoffset="${C*(1-expPct)}"
+              stroke-linecap="round"/>
+            <circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+              stroke="#16a34a" stroke-width="16"
+              stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-num">${contributions}</div>
+            <div class="ring-denom">of ${GOAL_TARGET}</div>
+            <div class="ring-tag">Goals + Assists</div>
+          </div>
+        </div>
+        <div class="badge ${paceClass}">${paceText}</div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-lbl">Goals</div>
+          <div class="stat-val" style="color:var(--green)">${goals}</div>
+          <div class="stat-sub">${(goals/Math.max(played,1)).toFixed(1)} per game</div>
+        </div>
+        <div class="stat">
+          <div class="stat-lbl">Assists</div>
+          <div class="stat-val" style="color:var(--yellow)">${assists}</div>
+          <div class="stat-sub">${(assists/Math.max(played,1)).toFixed(1)} per game</div>
+        </div>
+        <div class="stat">
+          <div class="stat-lbl">Games</div>
+          <div class="stat-val" style="color:var(--blue)">${played}</div>
+          <div class="stat-sub">played in 2026</div>
+        </div>
+        <div class="stat">
+          <div class="stat-lbl">G+A / Game</div>
+          <div class="stat-val" style="color:var(--purple)">${(contributions/Math.max(played,1)).toFixed(2)}</div>
+          <div class="stat-sub">${remaining} more needed</div>
+        </div>
+      </div>
+
+      <!-- Pace -->
+      <div class="card">
+        <div class="card-title">Pace to ${GOAL_TARGET} Goal Contributions (G+A)</div>
+        <div class="bar-row">
+          <div class="bar-lbl">Expected</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(expPct*100).toFixed(1)}%;background:rgba(0,0,0,0.15)"></div></div>
+          <div class="bar-num" style="color:var(--muted)">${expected.toFixed(1)}</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-lbl">Actual</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(pct*100).toFixed(1)}%;background:var(--green)"></div></div>
+          <div class="bar-num" style="color:var(--green)">${contributions}</div>
+        </div>
+        <div class="projection">
+          At your current rate you're projected to finish with
+          <span class="${projClass}">${projected} G+A</span> in 2026. ${projMsg}
+        </div>
+      </div>
+
+      <!-- Per-game chart -->
+      <div class="card">
+        <div class="card-title">Goals &amp; Assists Per Game</div>
+        <canvas id="chart"></canvas>
+      </div>
+
+      <!-- Stats by team -->
+      <div class="card">
+        <div class="card-title">Stats by Team</div>
+        <div class="team-grid">
+          ${Object.values(
+            games.reduce((acc, g) => {
+              const key = g.team.toLowerCase();
+              if (!acc[key]) acc[key] = { name: g.team, games: 0, goals: 0, assists: 0 };
+              acc[key].games++;
+              acc[key].goals   += g.goals;
+              acc[key].assists += g.assists;
+              return acc;
+            }, {})
+          ).sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists))
+           .map(t => {
+             const contrib = t.goals + t.assists;
+             return `
+               <div class="team-card">
+                 <div class="team-name">${t.name}</div>
+                 <div class="team-row"><span class="team-row-lbl">Games</span>   <span class="team-row-val" style="color:var(--blue)">${t.games}</span></div>
+                 <div class="team-row"><span class="team-row-lbl">Goals</span>   <span class="team-row-val" style="color:var(--green)">${t.goals}</span></div>
+                 <div class="team-row"><span class="team-row-lbl">Assists</span> <span class="team-row-val" style="color:var(--yellow)">${t.assists}</span></div>
+                 <div class="team-row"><span class="team-row-lbl">G+A</span>     <span class="team-row-val" style="color:var(--purple)">${contrib}</span></div>
+                 <div class="team-row"><span class="team-row-lbl">Per game</span><span class="team-row-val">${(contrib/t.games).toFixed(2)}</span></div>
+               </div>`;
+           }).join('')}
+        </div>
+      </div>
+
+      <!-- Upcoming games -->
+      <div class="card">
+        <div class="cal-header">
+          <div class="card-title" style="margin-bottom:0">Upcoming Games</div>
+          <div id="cal-header-right">
+            <button class="cal-connect-btn" id="cal-btn" onclick="connectCalendar()">📅 Connect Google Calendar</button>
+          </div>
+        </div>
+        <div id="cal-body">
+          <div class="cal-empty">Click "Connect Google Calendar" to load upcoming games.</div>
+        </div>
+      </div>
+    `;
+
+    /* Chart.js — light theme */
+    new Chart(document.getElementById('chart'), {
+      type: 'bar',
+      data: {
+        labels: games.map(g => `${g.label} · ${g.team}`),
+        datasets: [
+          { label: 'Goals',   data: games.map(g => g.goals),   backgroundColor: 'rgba(22,163,74,0.8)',  borderRadius: 6, borderSkipped: false },
+          { label: 'Assists', data: games.map(g => g.assists), backgroundColor: 'rgba(180,83,9,0.7)',   borderRadius: 6, borderSkipped: false },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#334155', font: { weight: '600' } } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}` } },
+        },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+          y: { ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' }, min: 0 },
+        },
+      },
+    });
+
+    setTimeout(initTokenClient, 500);
+  }
+
+  function connectCalendar() {
+    if (!tokenClient) initTokenClient();
+    if (tokenClient) tokenClient.requestAccessToken();
+  }
+
+  /* ── Scatter soccer balls in background ── */
+  function scatterBalls() {
+    const bg = document.getElementById('soccer-bg');
+    if (!bg) return;
+    const count = 40;
+    for (let i = 0; i < count; i++) {
+      const el       = document.createElement('span');
+      const size     = (1.5 + Math.random() * 2).toFixed(2);
+      const opacity  = (0.18 + Math.random() * 0.18).toFixed(2);
+      const dur      = (5 + Math.random() * 7).toFixed(1);
+      const delay    = (Math.random() * 8).toFixed(1);
+      el.textContent = '⚽';
+      el.style.cssText = `
+        left:${(Math.random() * 98).toFixed(1)}%;
+        top:${(Math.random() * 98).toFixed(1)}%;
+        font-size:${size}rem;
+        opacity:${opacity};
+        --dur:${dur}s;
+        --delay:${delay}s;
+      `;
+      bg.appendChild(el);
+    }
+  }
+  scatterBalls();
+
+  /* ── Load sheet data ── */
+  async function load() {
+    try {
+      const res  = await fetch(CSV_URL);
+      const text = await res.text();
+      render(parseGames(parseCSV(text)));
+    } catch (err) {
+      document.getElementById('app').innerHTML = `
+        <div class="error-box">
+          <p style="font-size:1.5rem;margin-bottom:.5rem">⚠️</p>
+          <p style="font-weight:700;margin-bottom:.5rem">Couldn't fetch spreadsheet data</p>
+          <p style="font-size:.85rem">If you opened this file directly, run a local server:</p>
+          <code>python3 -m http.server 8081</code>
+          <p style="font-size:.8rem;margin-top:.75rem">then open <strong>http://localhost:8081/soccer-tracker.html</strong></p>
+        </div>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
